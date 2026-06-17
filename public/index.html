@@ -1,17 +1,4 @@
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.NODEMAILER_USER,
-    pass: process.env.NODEMAILER_PASS,
-  },
-});
-
-const sendMail = async (to, sub, OTP) => {
-  const otpHtml = `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -65,7 +52,7 @@ const sendMail = async (to, sub, OTP) => {
                     letter-spacing:8px;
                     color:#2563eb;
                   ">
-                    ${OTP}
+                    {{OTP}}
                   </div>
                 </td>
               </tr>
@@ -101,12 +88,4 @@ const sendMail = async (to, sub, OTP) => {
 </table>
 
 </body>
-  </html>`;
-  return await transporter.sendMail({
-    to: to,
-    subject: sub,
-    html: otpHtml,
-  });
-};
-
-export { sendMail };
+</html>

@@ -3,6 +3,9 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
+import { sendMail } from "../utils/nodemailer.js";
+import getOTP from "../utils/getOTP.js";
+import { OTP } from "../models/otp.model.js";
 
 const generateTokens = async (user_id) => {
   const user = await User.findById(user_id);
@@ -189,4 +192,155 @@ const refreshTokens = async (req, res) => {
     .json(new ApiResponse(200, {}, "successfully refresh tokens"));
 };
 
-export { registerUser, loginUser, logoutUser, changeUserAvatar, refreshTokens };
+const sendOtpEmail = async (req, res) => {
+  /*
+  When a user goes to the endpoint, an email of OTP will send to user email that is in database. If the user enter OTP and proceed, it will go to another endpoint.
+  */
+
+  const userId = req.user?._id;
+  if (!userId) {
+    throw new ApiError(400, "Authentication failed");
+  }
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(400, "user not found");
+  }
+  if (user.isVerified) {
+    throw new ApiError(400, "user is already verified");
+  }
+
+  const generatedOtp = getOTP();
+  if (!generatedOtp) {
+    throw new ApiError(500, "OTP generation failed");
+  }
+
+  await sendMail(user.email, "Your Chatrix Verification Code", generatedOtp)
+    .then(async () => {
+      await OTP.create({
+        otp: generatedOtp.toString(),
+        user_id: userId,
+      });
+
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(
+            200,
+            { user_id: userId },
+            "OTP successfully send to Email",
+          ),
+        );
+    })
+    .catch(() => {
+      throw new ApiError(500, "Email not send");
+    });
+};
+
+const verifyOtp = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) {
+      throw new ApiError(400, "OTP is required.");
+    }
+    const userId = req.user?._id;
+    if (!req.user?._id) {
+      throw new ApiError(400, "Authentication failed");
+    }
+
+    const otpObj = await OTP.findOne({ user_id: userId });
+    if (!otpObj) {
+      throw new ApiError(
+        400,
+        "User verification failed OTP not found or expired",
+      );
+    }
+
+    if (otp != otpObj.otp) {
+      throw new ApiError(400, "otp not matched");
+    }
+
+    //set user varified
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(400, "user not found when saving");
+    }
+
+    user.isVerified = true;
+    await user.save({ validateBeforeSave: false });
+
+    const newUser = await User.findById(userId).select(
+      "-password -refreshToken -status",
+    );
+
+    if (!newUser) {
+      throw new ApiError(500, "user not found when responding");
+    }
+    //delete otpObj
+    await OTP.findByIdAndDelete(otpObj?._id);
+
+    //return
+    return res
+      .status(200)
+      .json(new ApiResponse(200, newUser, "user varification successful"));
+  } catch (error) {
+    throw new ApiError(400, `something went wrong: ${error}`);
+  }
+};
+
+const reSendOtp = async (req, res) => {
+  const userId = req.user;
+  if (!userId) {
+    throw new ApiError(400, "Authentication failed");
+  }
+  const userOtpObj = await OTP.findOne({ user_id: userId });
+
+  //if otpobj present then update,extend time  / if not create
+  const generatedOtp = getOTP();
+  if (userOtpObj) {
+    if (Date.now() - userOtpObj.createdAt.getTime() <= 30000) {
+      throw new ApiError(400, "please wait 30 seconds till send otp");
+    }
+
+    await sendMail(
+      req.user.email,
+      "Your Chatrix Verification Code",
+      generatedOtp,
+    )
+      .then(async () => {
+        userOtpObj.otp = generatedOtp.toString();
+        userOtpObj.createdAt = Date.now();
+        await userOtpObj.save({ validateBeforeSave: false });
+      })
+      .catch(() => {
+        throw new ApiError(500, "email not send");
+      });
+  } else {
+    //create otp object
+    await OTP.create({
+      otp: generatedOtp.toString(),
+      user_id: userId,
+    });
+  }
+
+  //===============HERE===============
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { status: "success" },
+        "successfully resend code to email",
+      ),
+    );
+};
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  changeUserAvatar,
+  refreshTokens,
+  sendOtpEmail,
+  verifyOtp,
+  reSendOtp,
+};

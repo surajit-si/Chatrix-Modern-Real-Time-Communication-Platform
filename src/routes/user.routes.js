@@ -5,6 +5,9 @@ import {
   registerUser,
   changeUserAvatar,
   refreshTokens,
+  sendOtpEmail,
+  verifyOtp,
+  reSendOtp,
 } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import varifyJWT from "../middlewares/varifyJWT.js";
@@ -18,5 +21,9 @@ router
   .route("/change-avatar")
   .post(upload.single("avatar"), varifyJWT, changeUserAvatar);
 router.route("/refreshTokens").post(upload.none(), varifyJWT, refreshTokens);
+
+router.route("/verify-email").get(upload.none(), varifyJWT, sendOtpEmail);
+router.route("/verify-otp").post(upload.none(), varifyJWT, verifyOtp);
+router.route("/resend-otp").get(upload.none(), varifyJWT, reSendOtp);
 
 export default router;
