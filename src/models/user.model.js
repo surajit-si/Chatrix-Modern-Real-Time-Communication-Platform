@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { type } from "os";
 
 const userSchema = new mongoose.Schema(
   {
@@ -31,6 +32,10 @@ const userSchema = new mongoose.Schema(
     avatar: {
       type: String,
       required: true,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
     refreshToken: {
       type: String,

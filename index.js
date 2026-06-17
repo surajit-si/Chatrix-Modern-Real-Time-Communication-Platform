@@ -4,6 +4,7 @@ import http from "http";
 import connectDB from "./src/db/index.js";
 import WebSocket, { WebSocketServer } from "ws";
 import { getUserId } from "./src/utils/userUtils.js";
+import { sendMail } from "./src/utils/nodemailer.js";
 
 const PORT = process.env.PORT || 6060;
 connectDB()

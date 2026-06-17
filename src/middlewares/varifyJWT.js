@@ -20,6 +20,11 @@ const varifyJWT = async (req, res, next) => {
   if (!user) {
     throw new ApiError(200, "user not found in DB when varifing");
   }
+
+  if (!user.isVerified) {
+    throw new ApiError(401, "user is not varified, please varify");
+  }
+
   req.user = user;
   next();
 };
