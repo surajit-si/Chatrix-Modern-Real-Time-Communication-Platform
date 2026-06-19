@@ -38,10 +38,14 @@ const registerUser = async (req, res) => {
     $or: [{ username }, { email }],
   });
 
-  if (existedUser) {
-    throw new ApiError(400, "user already registered");
+  if (existedUser.email == email) {
+    throw new ApiError(400, "Email already registered");
   }
 
+  if (existedUser.username == username) {
+    throw new ApiError(400, "Username is already occupied");
+  }
+  
   const avatarLink = await uploadOnCloudinary(avatarLocalPath);
   if (!avatarLink) {
     throw new ApiError(500, "Error when getting avatarLink");
