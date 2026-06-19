@@ -334,7 +334,21 @@ const reSendOtp = async (req, res) => {
     );
 };
 
+const getUser = async (req, res) => {
+  if (!req.user) {
+    return res.json(
+      new ApiResponse(200, {
+        status: "failed",
+        navigate: "/landing-page",
+      }),
+    );
+  }
+
+  res.status(200).json(new ApiResponse(200, { profile: req.user }));
+};
+
 export {
+  getUser,
   registerUser,
   loginUser,
   logoutUser,

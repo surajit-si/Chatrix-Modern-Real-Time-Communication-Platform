@@ -1,28 +1,42 @@
 import jwt from "jsonwebtoken";
 import ApiError from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
+import ApiResponse from "../utils/ApiResponse.js";
 
 const varifyJWT = async (req, res, next) => {
   const { accessToken, refreshToken } = req.cookies;
   if (!accessToken) {
-    throw new ApiError(200, "no accessToken to varify");
+    return res
+      .status(401)
+      .json(new ApiResponse(401, null, "no accessToken to verify"));
   }
-  const decoaded = await jwt.verify(
-    accessToken,
-    process.env.ACCESS_TOKEN_SECRET,
-  );
+
+  let decoaded;
+  try {
+    decoaded = await jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
+  } catch (error) {
+    return res
+      .status(401)
+      .json(new ApiResponse(401, null, "invalid or expired token"));
+  }
 
   if (!decoaded) {
-    throw new ApiError(200, "cant get payload when varifing");
+    return res
+      .status(401)
+      .json(new ApiResponse(401, null, "cant get payload when verifying"));
   }
 
   const user = await User.findById(decoaded._id).select("-password -status");
   if (!user) {
-    throw new ApiError(200, "user not found in DB when varifing");
+    return res
+      .status(404)
+      .json(new ApiResponse(404, null, "user not found in DB when verifying"));
   }
 
   if (!user.isVerified) {
-    throw new ApiError(401, "user is not varified, please varify");
+    return res
+      .status(403)
+      .json(new ApiResponse(403, null, "user is not verified, please verify"));
   }
 
   req.user = user;
