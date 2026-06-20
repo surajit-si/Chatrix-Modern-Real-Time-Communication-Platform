@@ -323,11 +323,21 @@ const reSendOtp = async (req, res) => {
         throw new ApiError(500, "email not send");
       });
   } else {
-    //create otp object
-    await OTP.create({
-      otp: generatedOtp.toString(),
-      user_id: userId.toString(),
-    });
+    //create otp object and send email
+    await sendMail(
+      req.user.email,
+      "Your Chatrix Verification Code",
+      generatedOtp,
+    )
+      .then(async () => {
+        await OTP.create({
+          otp: generatedOtp.toString(),
+          user_id: userId.toString(),
+        });
+      })
+      .catch(() => {
+        throw new ApiError(500, "email not send");
+      });
   }
 
   //===============HERE===============

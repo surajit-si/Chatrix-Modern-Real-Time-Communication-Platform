@@ -103,6 +103,7 @@ const sendMail = async (to, sub, OTP) => {
 </body>
   </html>`;
   return await transporter.sendMail({
+    from: process.env.NODEMAILER_USER,
     to: to,
     subject: sub,
     html: otpHtml,
