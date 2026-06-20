@@ -4,11 +4,16 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import ApiResponse from "./src/utils/ApiResponse.js";
 
-app.use(express.static("public"));
+// Expose the email template only on a dedicated path instead of the API root.
+app.use("/email-ui", express.static("public"));
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
 app.use(cookieParser());
+
+app.get("/", (req, res) => {
+  res.json({ status: "ok", message: "Chatrix backend is running" });
+});
 //CORS Setup
 const allowedOrigins =
   process.env.CORS_ORIGIN === "*"

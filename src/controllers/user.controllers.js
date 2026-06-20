@@ -38,12 +38,14 @@ const registerUser = async (req, res) => {
     $or: [{ username }, { email }],
   });
 
-  if (existedUser.email == email) {
-    throw new ApiError(400, "Email already registered");
-  }
+  if (existedUser) {
+    if (existedUser.email === email) {
+      throw new ApiError(400, "Email already registered");
+    }
 
-  if (existedUser.username == username) {
-    throw new ApiError(400, "Username is already occupied");
+    if (existedUser.username === username) {
+      throw new ApiError(400, "Username is already occupied");
+    }
   }
 
   const avatarLink = await uploadOnCloudinary(avatarLocalPath);
@@ -252,12 +254,13 @@ const verifyOtp = async (req, res) => {
       throw new ApiError(400, "Authentication failed");
     }
 
-    const otpObj = await OTP.findOne({ user_id: userId.toString() }).sort({ createdAt: -1 });
+    const otpObj = await OTP.findOne({ user_id: userId.toString() }).sort({
+      createdAt: -1,
+    });
     if (!otpObj) {
       throw new ApiError(400, "OTP expired");
     }
 
-    
     if (otp != otpObj.otp) {
       throw new ApiError(400, "OTP not matched");
     }
