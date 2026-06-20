@@ -226,6 +226,8 @@ const sendOtpEmail = async (req, res) => {
       await OTP.create({
         otp: generatedOtp.toString(),
         user_id: userId.toString(),
+      }).catch((err) => {
+        throw new ApiError(500, "error when sending code");
       });
 
       return res
