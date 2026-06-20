@@ -45,7 +45,7 @@ const registerUser = async (req, res) => {
   if (existedUser.username == username) {
     throw new ApiError(400, "Username is already occupied");
   }
-  
+
   const avatarLink = await uploadOnCloudinary(avatarLocalPath);
   if (!avatarLink) {
     throw new ApiError(500, "Error when getting avatarLink");
@@ -85,7 +85,7 @@ const loginUser = async (req, res) => {
     throw new ApiError(400, "user not exist.");
   }
 
-  const varified = user.isPasswordCorrect(password);
+  const varified = await user.isPasswordCorrect(password);
 
   if (!varified) {
     throw new ApiError(400, "wrong password.");
@@ -169,7 +169,7 @@ const changeUserAvatar = async (req, res) => {
 };
 
 const refreshTokens = async (req, res) => {
-  const { accessToken, refreshToken } = req.cookies;
+  const { refreshToken } = req.cookies;
   if (!refreshToken) {
     throw new ApiError(200, "there is no tokens");
   }
@@ -220,9 +220,10 @@ const sendOtpEmail = async (req, res) => {
 
   await sendMail(user.email, "Your Chatrix Verification Code", generatedOtp)
     .then(async () => {
+      await OTP.findOneAndDelete({ user_id: userId.toString() });
       await OTP.create({
         otp: generatedOtp.toString(),
-        user_id: userId,
+        user_id: userId.toString(),
       });
 
       return res
@@ -251,16 +252,14 @@ const verifyOtp = async (req, res) => {
       throw new ApiError(400, "Authentication failed");
     }
 
-    const otpObj = await OTP.findOne({ user_id: userId });
+    const otpObj = await OTP.findOne({ user_id: userId.toString() }).sort({ createdAt: -1 });
     if (!otpObj) {
-      throw new ApiError(
-        400,
-        "User verification failed OTP not found or expired",
-      );
+      throw new ApiError(400, "OTP expired");
     }
 
+    
     if (otp != otpObj.otp) {
-      throw new ApiError(400, "otp not matched");
+      throw new ApiError(400, "OTP not matched");
     }
 
     //set user varified
@@ -287,16 +286,16 @@ const verifyOtp = async (req, res) => {
       .status(200)
       .json(new ApiResponse(200, newUser, "user varification successful"));
   } catch (error) {
-    throw new ApiError(400, `something went wrong: ${error}`);
+    throw new ApiError(400, error);
   }
 };
 
 const reSendOtp = async (req, res) => {
-  const userId = req.user;
+  const userId = req.user?._id;
   if (!userId) {
     throw new ApiError(400, "Authentication failed");
   }
-  const userOtpObj = await OTP.findOne({ user_id: userId });
+  const userOtpObj = await OTP.findOne({ user_id: userId.toString() });
 
   //if otpobj present then update,extend time  / if not create
   const generatedOtp = getOTP();
@@ -322,7 +321,7 @@ const reSendOtp = async (req, res) => {
     //create otp object
     await OTP.create({
       otp: generatedOtp.toString(),
-      user_id: userId,
+      user_id: userId.toString(),
     });
   }
 

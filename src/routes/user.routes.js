@@ -12,6 +12,7 @@ import {
 } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import varifyJWT from "../middlewares/varifyJWT.js";
+import varifyJWTNoOtp from "../middlewares/varifyJWTNoOtp.js";
 
 // Async handler wrapper to catch errors in async route handlers
 const asyncHandler = (fn) => (req, res, next) => {
@@ -20,7 +21,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 const router = Router();
 
-router.route("/").get(upload.none(), varifyJWT, asyncHandler(getUser));
+router.route("/").get(upload.none(), varifyJWTNoOtp, asyncHandler(getUser));
 router.route("/register").post(upload.single("avatar"), asyncHandler(registerUser));
 router.route("/login").post(upload.none(), asyncHandler(loginUser));
 router.route("/logout").post(upload.none(), varifyJWT, asyncHandler(logoutUser));
@@ -29,8 +30,8 @@ router
   .post(upload.single("avatar"), varifyJWT, asyncHandler(changeUserAvatar));
 router.route("/refreshTokens").post(upload.none(), varifyJWT, asyncHandler(refreshTokens));
 
-router.route("/verify-email").get(upload.none(), varifyJWT, asyncHandler(sendOtpEmail));
-router.route("/verify-otp").post(upload.none(), varifyJWT, asyncHandler(verifyOtp));
-router.route("/resend-otp").get(upload.none(), varifyJWT, asyncHandler(reSendOtp));
+router.route("/verify-email").get(upload.none(), varifyJWTNoOtp, asyncHandler(sendOtpEmail));
+router.route("/verify-otp").post(upload.none(), varifyJWTNoOtp, asyncHandler(verifyOtp));
+router.route("/resend-otp").get(upload.none(), varifyJWTNoOtp, asyncHandler(reSendOtp));
 
 export default router;
