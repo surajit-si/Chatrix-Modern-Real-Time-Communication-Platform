@@ -8,19 +8,19 @@ const conversationSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    messages: [
+   /*  messages: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Message",
       },
-    ],
+    ], */
     lastMessage: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
     },
     isGroup: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     groupName: {
       type: String,

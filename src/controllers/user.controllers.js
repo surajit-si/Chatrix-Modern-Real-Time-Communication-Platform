@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import { sendMail } from "../utils/nodemailer.js";
 import getOTP from "../utils/getOTP.js";
 import { OTP } from "../models/otp.model.js";
+import { Conversation } from "../models/conversation.model.js";
 
 const generateTokens = async (user_id) => {
   const user = await User.findById(user_id);
@@ -355,14 +356,135 @@ const reSendOtp = async (req, res) => {
 const getUser = async (req, res) => {
   if (!req.user) {
     return res.json(
-      new ApiResponse(200, {
-        status: "failed",
-        navigate: "/landing-page",
-      }),
+      new ApiResponse(
+        200,
+        {
+          status: "failed",
+          navigate: "/landing-page",
+        },
+        "User is not Autherized.",
+      ),
     );
   }
 
-  res.status(200).json(new ApiResponse(200, { profile: req.user }));
+  if (!res.user?.isVerified) {
+    return res.status(200).json(new ApiResponse(200, { profile: req.user }));
+  }
+
+  // if isvarified is true
+  const conversations = await Conversation.aggregate([
+    { $match: { participants: req.user?._id } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "participants",
+        foreignField: "_id",
+        pipeline: [
+          {
+            $project: {
+              password: 0,
+              refreshToken: 0,
+            },
+          },
+        ],
+        as: "participants",
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "admins",
+        foreignField: "_id",
+        pipeline: [
+          {
+            $project: {
+              password: 0,
+              refreshToken: 0,
+            },
+          },
+        ],
+        as: "admins",
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "createdBy",
+        foreignField: "_id",
+        pipeline: [
+          {
+            $project: {
+              password: 0,
+              refreshToken: 0,
+            },
+          },
+        ],
+        as: "createdBy",
+      },
+    },
+    {
+      $addFields: {
+        createdBy: {
+          $first: "$createdBy",
+        },
+      },
+    },
+  ]);
+  //=========================================================================
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { profile: req.user, conversations: conversations }),
+    );
+};
+
+const createConversation = async (req, res) => {
+  const authUser = req.user;
+  //body
+  const { groupName } = req.body;
+
+  if (!groupName) {
+    throw new ApiError(400, "Group Name is required");
+  }
+
+  if (groupName.length <= 2) {
+    throw new ApiError(400, "Group Name is too small");
+  }
+
+  //avatar
+  const groupAvatarPath = req.file?.path;
+  if (!groupAvatarPath) {
+    throw new ApiError(400, "Avatar is required");
+  }
+  //upload avatar
+  const avatarLink = await uploadOnCloudinary(groupAvatarPath);
+
+  if (!avatarLink) {
+    throw new ApiError(500, "Avatar upload failed.");
+  }
+
+  const newConversation = await Conversation.create({
+    participants: [authUser._id],
+    groupName: groupName,
+    groupAvatar: avatarLink,
+    admins: [authUser._id],
+    createdBy: authUser._id,
+  });
+
+  if (!newConversation) {
+    throw new ApiError(500, "Conversation not created.");
+  }
+
+  return res
+    .status(201)
+    .json(
+      new ApiResponse(
+        201,
+        newConversation,
+        "successfully created new conversation.",
+      ),
+    );
 };
 
 export {
@@ -375,4 +497,5 @@ export {
   sendOtpEmail,
   verifyOtp,
   reSendOtp,
+  createConversation,
 };
