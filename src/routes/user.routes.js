@@ -35,7 +35,7 @@ router
   .post(upload.single("avatar"), varifyJWT, asyncHandler(changeUserAvatar));
 router
   .route("/refreshTokens")
-  .post(upload.none(), varifyJWT, asyncHandler(refreshTokens));
+  .get(upload.none(), asyncHandler(refreshTokens));
 
 router
   .route("/verify-email")

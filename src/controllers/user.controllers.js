@@ -174,19 +174,28 @@ const changeUserAvatar = async (req, res) => {
 const refreshTokens = async (req, res) => {
   const { refreshToken } = req.cookies;
   if (!refreshToken) {
-    throw new ApiError(200, "there is no tokens");
+    throw new ApiError(401, "refresh token not found");
   }
 
-  const decoaded = await jwt.verify(
-    refreshToken,
-    process.env.REFRESH_TOKEN_SECRET,
-  );
-
-  if (!decoaded) {
-    throw new ApiError(200, "token is unvalid or modified");
+  let decoaded;
+  try {
+    decoaded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+  } catch (error) {
+    throw new ApiError(401, "refresh token expired or invalid");
   }
+
+  if (!decoaded?._id) {
+    throw new ApiError(401, "invalid token payload");
+  }
+
+  // Verify refresh token exists in database
+  const user = await User.findById(decoaded._id);
+  if (!user || user.refreshToken !== refreshToken) {
+    throw new ApiError(401, "refresh token mismatch or user not found");
+  }
+
   const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-    await generateTokens(decoaded?._id);
+    await generateTokens(decoaded._id);
 
   const options = {
     httpOnly: true,
@@ -194,6 +203,7 @@ const refreshTokens = async (req, res) => {
   };
 
   return res
+    .status(200)
     .cookie("refreshToken", newRefreshToken, options)
     .cookie("accessToken", newAccessToken, options)
     .json(new ApiResponse(200, {}, "successfully refresh tokens"));
@@ -357,7 +367,7 @@ const getUser = async (req, res) => {
   if (!req.user) {
     return res.json(
       new ApiResponse(
-        200,
+        400,
         {
           status: "failed",
           navigate: "/landing-page",
@@ -467,7 +477,7 @@ const createConversation = async (req, res) => {
   const newConversation = await Conversation.create({
     participants: [authUser._id],
     groupName: groupName,
-    groupAvatar: avatarLink,
+    groupAvatar: avatarLink.url,
     admins: [authUser._id],
     createdBy: authUser._id,
   });
