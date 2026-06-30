@@ -366,18 +366,22 @@ const reSendOtp = async (req, res) => {
 const getUser = async (req, res) => {
   if (!req.user) {
     return res.json(
-      new ApiResponse(
+      /*  new ApiResponse(
         400,
         {
           status: "failed",
           navigate: "/landing-page",
         },
         "User is not Autherized.",
-      ),
+      ), */
+      new ApiError(401, "user not Autherized", {
+        status: "failed",
+        navigate: "/landing-page",
+      }),
     );
   }
 
-  if (!res.user?.isVerified) {
+  if (!req.user?.isVerified) {
     return res.status(200).json(new ApiResponse(200, { profile: req.user }));
   }
 
